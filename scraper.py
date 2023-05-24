@@ -24,12 +24,15 @@ def scrape_links(url, scrape_html, visited_pages=None):
 
     visited_pages.add(url)
 
-    for link in html_links:
-        html_links += scrape_links(link, scrape_html, visited_pages)
+    if scrape_html:
+        for link in html_links:
+            pdf, html = scrape_links(link, scrape_html, visited_pages)
+            pdf_links.extend(pdf)
+            html_links.extend(html)
 
     return pdf_links, html_links
 
-def download_pdf(url, folder):
+def download_file(url, folder):
     response = requests.get(url)
     file_name = os.path.basename(url)
     file_path = os.path.join(folder, file_name)
@@ -37,7 +40,7 @@ def download_pdf(url, folder):
     with open(file_path, 'wb') as file:
         file.write(response.content)
 
-    print(f"Downloaded PDF: {file_name}")
+    print(f"Downloaded: {file_name}")
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='PDF and HTML Scraper')
@@ -55,14 +58,15 @@ os.makedirs(output_dir, exist_ok=True)
 # Scrape PDF and HTML links
 pdf_links, html_links = scrape_links(args.url, not args.disable_html)
 
-# Download PDF files
+# Remove initial URL from HTML links
+html_links = [link for link in html_links if link != args.url]
+
+# Download PDF and HTML files
 for link in pdf_links:
-    download_pdf(link, output_dir)
+    download_file(link, output_dir)
 
-print("PDF links downloaded.")
-
-# Print HTML links if not disabled
 if not args.disable_html:
-    print("HTML links found:")
     for link in html_links:
-        print(link)
+        download_file(link, output_dir)
+
+print("Download complete.")

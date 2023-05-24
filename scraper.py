@@ -5,28 +5,46 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
 
-def scrape_links(url, scrape_html, visited_pages=None):
+def scrape_links(url, scrape_html=True, visited_pages=None):
     if visited_pages is None:
         visited_pages = set()
 
+    # Print out the URL being scraped
+    print(f"Scraping URL: {url}")
+
+    # Send HTTP request
     response = requests.get(url)
+
+    # Parse HTML content
     soup = BeautifulSoup(response.content, 'html.parser')
+
+    # Initialize lists for PDF and HTML links
     pdf_links = []
     html_links = []
 
+    # Find all links on the page
     for link in soup.find_all('a'):
         href = link.get('href')
         absolute_url = urljoin(url, href)
+
+        # If the link is a PDF, add it to the PDF links list
         if href.endswith('.pdf'):
             pdf_links.append(absolute_url)
+
+        # If the link is an HTML link and has not been visited yet, add it to the HTML links list
         elif scrape_html and absolute_url.startswith(url) and absolute_url not in visited_pages:
             html_links.append(absolute_url)
 
+    # Add the current URL to the visited pages set
     visited_pages.add(url)
 
+    # Recursively scrape all HTML links on the page
     for link in html_links:
-        html_links += scrape_links(link, scrape_html, visited_pages)
+        pdf_links_recursive, html_links_recursive = scrape_links(link, scrape_html, visited_pages)
+        pdf_links += pdf_links_recursive
+        html_links += html_links_recursive
 
+    # Return the PDF and HTML links found on the page
     return pdf_links, html_links
 
 def download_pdf(url, folder):
